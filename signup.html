@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Donation Website</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="auth-styles.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>Create Account</h1>
+                <p>Join our community and start making a difference</p>
+            </div>
+
+            <form id="signupForm" class="auth-form">
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" id="fullName" name="fullName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required minlength="6">
+                    <div class="password-strength">
+                        <div class="strength-bar">
+                            <div class="strength-fill" id="strengthFill"></div>
+                        </div>
+                        <span class="strength-text" id="strengthText">Password strength</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="userType">I am a:</label>
+                    <select id="userType" name="userType" required>
+                        <option value="">Select your role</option>
+                        <option value="donor">Individual Donor</option>
+                        <option value="ngo">NGO Representative</option>
+                        <option value="volunteer">Volunteer</option>
+                    </select>
+                </div>
+
+                <div class="form-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="agreeTerms" required>
+                        <span class="checkmark"></span>
+                        I agree to the <a href="#" target="_blank">Terms of Service</a> and <a href="#" target="_blank">Privacy Policy</a>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full">
+                    <span class="btn-text">Create Account</span>
+                    <span class="btn-loading" style="display: none;">Creating Account...</span>
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Already have an account? <a href="login.html">Sign in here</a></p>
+                <p><a href="main.html">← Back to Home</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Firebase Configuration -->
+    <script src="firebase-config.js"></script>
+    
+    <!-- Authentication Script -->
+    <script src="auth.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const signupForm = document.getElementById('signupForm');
+            const passwordInput = document.getElementById('password');
+            const confirmPasswordInput = document.getElementById('confirmPassword');
+            const strengthFill = document.getElementById('strengthFill');
+            const strengthText = document.getElementById('strengthText');
+
+            // Password strength checker
+            passwordInput.addEventListener('input', function() {
+                const password = this.value;
+                const strength = calculatePasswordStrength(password);
+                
+                strengthFill.style.width = strength.percentage + '%';
+                strengthFill.className = 'strength-fill ' + strength.class;
+                strengthText.textContent = strength.text;
+            });
+
+            // Password confirmation validation
+            confirmPasswordInput.addEventListener('input', function() {
+                const password = passwordInput.value;
+                const confirmPassword = this.value;
+                
+                if (confirmPassword && password !== confirmPassword) {
+                    this.setCustomValidity('Passwords do not match');
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+
+            // Handle signup form submission
+            signupForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const fullName = document.getElementById('fullName').value;
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                const userType = document.getElementById('userType').value;
+                const agreeTerms = document.getElementById('agreeTerms').checked;
+
+                // Validate passwords match
+                if (password !== confirmPassword) {
+                    authManager.showMessage('Passwords do not match', 'error');
+                    return;
+                }
+
+                // Validate terms agreement
+                if (!agreeTerms) {
+                    authManager.showMessage('Please agree to the terms and conditions', 'error');
+                    return;
+                }
+
+                // Show loading state
+                const submitBtn = signupForm.querySelector('button[type="submit"]');
+                const btnText = submitBtn.querySelector('.btn-text');
+                const btnLoading = submitBtn.querySelector('.btn-loading');
+                
+                btnText.style.display = 'none';
+                btnLoading.style.display = 'inline';
+                submitBtn.disabled = true;
+
+                try {
+                    await authManager.signUp(email, password, fullName);
+                    
+                    // Update user role in Firestore
+                    const user = authManager.getCurrentUser();
+                    if (user) {
+                        await firebase.firestore().collection('users').doc(user.uid).update({
+                            role: userType,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                    
+                    // Redirect will be handled by onAuthStateChanged
+                    
+                } catch (error) {
+                    console.error('Signup error:', error);
+                } finally {
+                    // Reset button state
+                    btnText.style.display = 'inline';
+                    btnLoading.style.display = 'none';
+                    submitBtn.disabled = false;
+                }
+            });
+
+            // Password strength calculation
+            function calculatePasswordStrength(password) {
+                let score = 0;
+                let feedback = [];
+
+                if (password.length >= 8) score += 1;
+                else feedback.push('at least 8 characters');
+
+                if (/[a-z]/.test(password)) score += 1;
+                else feedback.push('lowercase letters');
+
+                if (/[A-Z]/.test(password)) score += 1;
+                else feedback.push('uppercase letters');
+
+                if (/[0-9]/.test(password)) score += 1;
+                else feedback.push('numbers');
+
+                if (/[^A-Za-z0-9]/.test(password)) score += 1;
+                else feedback.push('special characters');
+
+                const percentage = (score / 5) * 100;
+                
+                if (score < 2) {
+                    return { percentage, class: 'weak', text: 'Weak - Add ' + feedback.join(', ') };
+                } else if (score < 4) {
+                    return { percentage, class: 'medium', text: 'Medium - Add ' + feedback.join(', ') };
+                } else {
+                    return { percentage, class: 'strong', text: 'Strong password!' };
+                }
+            }
+        });
+    </script>
+</body>
+</html>
