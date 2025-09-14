@@ -1,12 +1,12 @@
 // Firebase configuration
 // Replace with your Firebase project configuration
 const firebaseConfig = {
-    apiKey: "your_api_key",
-    authDomain: "your_domain.firebaseapp.com",
-    projectId: "your_project_Id",
-    storageBucket: "your_project-Id.appspot.com",
-    messagingSenderId: "your_sender_ID",
-    appId: "your_app_ID"
+     apiKey: "AIzaSyA7Rm4WBx5lGLLoCCao4EjJkDq9C78j8UM",
+    authDomain: "donateclothing-7efe0.firebaseapp.com",
+    projectId: "donateclothing-7efe0",
+    storageBucket: "donateclothing-7efe0.appspot.com",
+    messagingSenderId: "882145157583",
+    appId: "1:882145157583:web:5ebafaba871e36f37332ba"
 };
 
 // Initialize Firebase
